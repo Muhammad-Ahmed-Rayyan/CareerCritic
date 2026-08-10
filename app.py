@@ -1,10 +1,9 @@
-import streamlit as st
 from dotenv import load_dotenv
+load_dotenv()
 
+import streamlit as st
 from utils.file_extract import extract_resume_text
 from graph.workflow import build_graph
-
-load_dotenv()
 
 st.set_page_config(page_title="CareerCritic", page_icon="🧭", layout="centered")
 
