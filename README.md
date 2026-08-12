@@ -31,6 +31,8 @@ CareerCritic goes beyond a single LLM call. It demonstrates real multi-agent orc
 - **Critic Agent** evaluates whether that feedback is specific and actionable — if not, it routes back to JobFit for a revision (capped at 2 retries to guarantee termination)
 - **Writer Agent** compiles the final Markdown report
 
+[Try it out Here!](https://career-critic.streamlit.app)
+
 ---
 
 ## 🚀 Features
