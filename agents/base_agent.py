@@ -16,7 +16,7 @@ class BaseAgent(ABC):
         - fallback_output (property): a safe default if JSON parsing fails
     """
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile", temperature: float = 0):
+    def __init__(self, model: str = "openai/gpt-oss-120b", temperature: float = 0):
         self.llm = ChatGroq(
             model=model,
             temperature=temperature,
