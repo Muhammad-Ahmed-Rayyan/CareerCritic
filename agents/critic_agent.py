@@ -1,17 +1,13 @@
-import json
-import os
-from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import HumanMessage
+from agents.base_agent import BaseAgent
 
-from graph.state import CareerCriticState
 
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0,
-    api_key=os.environ.get("GROQ_API_KEY"),
-)
+class CriticAgent(BaseAgent):
+    """Judges whether feedback is specific/actionable; drives the revision loop."""
 
-SYSTEM_PROMPT = """You are a strict quality reviewer for career feedback. \
+    @property
+    def system_prompt(self) -> str:
+        return """You are a strict quality reviewer for career feedback. \
 Judge whether the feedback_draft below is specific, actionable, and backed \
 by concrete skills/evidence — not generic advice.
 
@@ -25,34 +21,22 @@ Mark "revise" if the feedback is vague, generic, or doesn't reference \
 specific skills or gaps. Mark "pass" only if it clearly names concrete \
 skills, tools, or experience."""
 
+    @property
+    def output_key(self) -> str:
+        return "critique"
 
-def critic_node(state: CareerCriticState) -> dict:
-    """LangGraph node: critiques fit_analysis['feedback_draft']."""
-    fit_analysis = state["fit_analysis"]
-    retry_count = state.get("retry_count", 0)
+    @property
+    def fallback_output(self) -> dict:
+        return {"verdict": "pass", "reasoning": "Could not parse critique; defaulting to pass."}
 
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(
-            content=f"Feedback draft to review:\n\n{fit_analysis['feedback_draft']}"
-        ),
-    ]
+    def build_messages(self, state: dict) -> list:
+        feedback = state["fit_analysis"]["feedback_draft"]
+        return [HumanMessage(content=f"Feedback draft to review:\n\n{feedback}")]
 
-    response = llm.invoke(messages)
-    raw_content = response.content.strip()
-
-    if raw_content.startswith("```"):
-        raw_content = raw_content.strip("`")
-        if raw_content.startswith("json"):
-            raw_content = raw_content[4:]
-        raw_content = raw_content.strip()
-
-    try:
-        critique = json.loads(raw_content)
-    except json.JSONDecodeError:
-        critique = {"verdict": "pass", "reasoning": "Could not parse critique; defaulting to pass."}
-
-    return {
-        "critique": critique,
-        "retry_count": retry_count + 1,
-    }
+    def run(self, state: dict) -> dict:
+        """Overrides base run() to also increment retry_count — an example
+        of polymorphism, since this agent's node behavior differs slightly
+        from the shared default."""
+        base_result = super().run(state)
+        base_result["retry_count"] = state.get("retry_count", 0) + 1
+        return base_result
