@@ -59,6 +59,7 @@ CareerCritic goes beyond a single LLM call. It demonstrates real multi-agent orc
 ```bash
 CareerCritic/
 ├── agents/
+│   ├── base_agent.py
 │   ├── parser_agent.py
 │   ├── jobfit_agent.py
 │   ├── critic_agent.py
