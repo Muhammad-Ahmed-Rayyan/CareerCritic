@@ -1,11 +1,7 @@
-"""
-JobFit Agent — compares parsed resume against a job description
-and produces a fit analysis with a feedback draft.
-"""
-
 import json
 from langchain_core.messages import HumanMessage
 from agents.base_agent import BaseAgent
+from graph.schemas import FitAnalysisSchema
 
 
 class JobFitAgent(BaseAgent):
@@ -17,33 +13,30 @@ class JobFitAgent(BaseAgent):
     @property
     def system_prompt(self) -> str:
         return """You are a career advisor comparing a candidate's resume \
-against a job description. Respond ONLY with valid JSON, no preamble, no \
-markdown fences.
+against a job description. Respond in JSON format matching exactly this schema:
 
-Return JSON in exactly this shape:
 {
   "fit_score": <integer 0-100>,
   "matched_skills": ["skill present in both resume and job", ...],
   "missing_skills": ["skill required by job but absent from resume", ...],
-  "feedback_draft": "A specific, actionable paragraph of feedback on how \
-well this candidate fits the role, and what to improve."
+  "feedback_draft": "A single paragraph of specific, actionable feedback \
+on how well this candidate fits the role, and what to improve."
 }
 
-Be specific. Avoid generic statements like "improve your skills" — name \
-exact skills, tools, or experience gaps."""
+IMPORTANT: use exactly these four field names. Do not add extra fields \
+like "strengths", "gaps", or "recommendations". feedback_draft must be a \
+single string paragraph, not a list.
+
+Be specific in feedback_draft. Avoid generic statements like "improve your \
+skills" — name exact skills, tools, or experience gaps."""
 
     @property
     def output_key(self) -> str:
         return "fit_analysis"
 
     @property
-    def fallback_output(self) -> dict:
-        return {
-            "fit_score": 0,
-            "matched_skills": [],
-            "missing_skills": [],
-            "feedback_draft": "Could not generate fit analysis automatically.",
-        }
+    def output_schema(self):
+        return FitAnalysisSchema
 
     def build_messages(self, state: dict) -> list:
         critique = state.get("critique")

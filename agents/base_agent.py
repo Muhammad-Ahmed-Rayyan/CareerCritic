@@ -1,6 +1,7 @@
-import json
 import os
 from abc import ABC, abstractmethod
+from typing import Optional, Type
+from pydantic import BaseModel
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -13,7 +14,8 @@ class BaseAgent(ABC):
         - system_prompt (property): the agent's instructions to the LLM
         - build_messages(state): constructs the HumanMessage content from state
         - output_key (property): the state key this agent's result is stored under
-        - fallback_output (property): a safe default if JSON parsing fails
+        - output_schema (property): a Pydantic model class for structured output,
+          or None if this agent produces raw text (e.g. the Writer agent)
     """
 
     def __init__(self, model: str = "openai/gpt-oss-120b", temperature: float = 0):
@@ -26,53 +28,51 @@ class BaseAgent(ABC):
     @property
     @abstractmethod
     def system_prompt(self) -> str:
-        """Each agent defines its own instructions to the LLM."""
         raise NotImplementedError
 
     @property
     @abstractmethod
     def output_key(self) -> str:
-        """The state dict key this agent writes its result to."""
         raise NotImplementedError
 
     @property
-    @abstractmethod
-    def fallback_output(self) -> dict:
-        """Safe default returned if the LLM output can't be parsed as JSON."""
-        raise NotImplementedError
+    def output_schema(self) -> Optional[Type[BaseModel]]:
+        """Override with a Pydantic model for structured output. None = raw text output."""
+        return None
 
     @abstractmethod
     def build_messages(self, state: dict) -> list:
-        """Builds the list of LangChain messages sent to the LLM for this agent."""
         raise NotImplementedError
 
-    def _clean_json_fences(self, raw_content: str) -> str:
-        """Strips markdown code fences the LLM sometimes wraps JSON in."""
-        content = raw_content.strip()
-        if content.startswith("```"):
-            content = content.strip("`")
-            if content.startswith("json"):
-                content = content[4:]
-            content = content.strip()
-        return content
-
-    def _call_llm(self, messages: list) -> dict:
-        """Calls the LLM and parses its response as JSON, with a safe fallback."""
-        response = self.llm.invoke(messages)
-        cleaned = self._clean_json_fences(response.content)
-        try:
-            return json.loads(cleaned)
-        except json.JSONDecodeError:
-            return self.fallback_output
+    def _call_llm(self, messages: list):
+        """
+        Calls the LLM. If output_schema is set, binds it via
+        with_structured_output() using JSON mode (more reliable than
+        tool-calling mode on Groq's current hosted models) and returns
+        a validated Pydantic instance. Otherwise returns the raw text response.
+        """
+        if self.output_schema is not None:
+            structured_llm = self.llm.with_structured_output(
+                self.output_schema, method="json_mode"
+            )
+            return structured_llm.invoke(messages)
+        else:
+            response = self.llm.invoke(messages)
+            return response.content.strip()
 
     def run(self, state: dict) -> dict:
         """
         Executes this agent as a LangGraph node.
-        Returns a partial state update: {output_key: parsed_result}.
+        Returns a partial state update: {output_key: result}.
+        Pydantic model outputs are converted to plain dicts for state storage.
         """
         messages = [
             SystemMessage(content=self.system_prompt),
             *self.build_messages(state),
         ]
         result = self._call_llm(messages)
+
+        if self.output_schema is not None:
+            result = result.model_dump()
+
         return {self.output_key: result}
