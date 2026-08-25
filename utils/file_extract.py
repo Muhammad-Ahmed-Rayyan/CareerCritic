@@ -26,12 +26,17 @@ def extract_text_from_txt(file_bytes: bytes) -> str:
     return file_bytes.decode("utf-8", errors="ignore").strip()
 
 
+from config import SUPPORTED_RESUME_FORMATS
+
+
 def extract_resume_text(filename: str, file_bytes: bytes) -> str:
-    """
-    Dispatch to the correct extractor based on file extension.
-    Raises ValueError for unsupported formats.
-    """
     ext = filename.lower().rsplit(".", 1)[-1]
+
+    if ext not in SUPPORTED_RESUME_FORMATS:
+        raise ValueError(
+            f"Unsupported file type: .{ext}. "
+            f"Please upload one of: {', '.join(SUPPORTED_RESUME_FORMATS)}."
+        )
 
     if ext == "pdf":
         return extract_text_from_pdf(file_bytes)
@@ -39,7 +44,3 @@ def extract_resume_text(filename: str, file_bytes: bytes) -> str:
         return extract_text_from_docx(file_bytes)
     elif ext == "txt":
         return extract_text_from_txt(file_bytes)
-    else:
-        raise ValueError(
-            f"Unsupported file type: .{ext}. Please upload PDF, DOCX, or TXT."
-        )

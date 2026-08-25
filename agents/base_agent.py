@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Type
 from pydantic import BaseModel
 from langchain_groq import ChatGroq
+from config import DEFAULT_MODEL
 from langchain_core.messages import SystemMessage, HumanMessage
 
 
@@ -18,7 +19,7 @@ class BaseAgent(ABC):
           or None if this agent produces raw text (e.g. the Writer agent)
     """
 
-    def __init__(self, model: str = "openai/gpt-oss-120b", temperature: float = 0):
+    def __init__(self, model: str = DEFAULT_MODEL, temperature: float = 0):
         self.llm = ChatGroq(
             model=model,
             temperature=temperature,

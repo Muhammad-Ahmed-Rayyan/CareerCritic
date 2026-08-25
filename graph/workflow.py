@@ -6,7 +6,7 @@ from agents.jobfit_agent import JobFitAgent
 from agents.critic_agent import CriticAgent
 from agents.writer_agent import WriterAgent
 
-MAX_RETRIES = 2
+from config import MAX_RETRIES
 
 
 def route_after_critic(state: CareerCriticState) -> str:

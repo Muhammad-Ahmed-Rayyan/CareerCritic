@@ -2,13 +2,14 @@ import json
 from langchain_core.messages import HumanMessage
 from agents.base_agent import BaseAgent
 from graph.schemas import FitAnalysisSchema
+from config import JOBFIT_TEMPERATURE
 
 
 class JobFitAgent(BaseAgent):
     """Scores resume-to-job fit and drafts feedback, revising on critic rejection."""
 
     def __init__(self):
-        super().__init__(temperature=0.3)
+        super().__init__(temperature=JOBFIT_TEMPERATURE)
 
     @property
     def system_prompt(self) -> str:

@@ -1,12 +1,13 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 from agents.base_agent import BaseAgent
+from config import WRITER_TEMPERATURE
 
 
 class WriterAgent(BaseAgent):
     """Compiles the final Markdown fit report. Output is plain text, not JSON."""
 
     def __init__(self):
-        super().__init__(temperature=0.4)
+        super().__init__(temperature=WRITER_TEMPERATURE)
 
     @property
     def system_prompt(self) -> str:
