@@ -10,3 +10,7 @@ MAX_RETRIES = 2
 
 # File handling
 SUPPORTED_RESUME_FORMATS = ["pdf", "docx", "txt"]
+
+# Logging
+LOG_LEVEL = "INFO"
+LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

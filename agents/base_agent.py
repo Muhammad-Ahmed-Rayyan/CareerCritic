@@ -4,6 +4,7 @@ from typing import Optional, Type
 from pydantic import BaseModel
 from langchain_groq import ChatGroq
 from config import DEFAULT_MODEL
+from utils.logger import get_logger
 from langchain_core.messages import SystemMessage, HumanMessage
 
 
@@ -25,6 +26,7 @@ class BaseAgent(ABC):
             temperature=temperature,
             api_key=os.environ.get("GROQ_API_KEY"),
         )
+        self.logger = get_logger(self.__class__.__name__)
 
     @property
     @abstractmethod
@@ -48,25 +50,35 @@ class BaseAgent(ABC):
     def _call_llm(self, messages: list):
         """
         Calls the LLM. If output_schema is set, binds it via
-        with_structured_output() using JSON mode (more reliable than
-        tool-calling mode on Groq's current hosted models) and returns
-        a validated Pydantic instance. Otherwise returns the raw text response.
+        with_structured_output() using JSON mode and returns a validated
+        Pydantic instance. Otherwise returns the raw text response.
         """
+        self.logger.info("Calling LLM (structured=%s)", self.output_schema is not None)
+
         if self.output_schema is not None:
             structured_llm = self.llm.with_structured_output(
                 self.output_schema, method="json_mode"
             )
-            return structured_llm.invoke(messages)
+            try:
+                result = structured_llm.invoke(messages)
+                self.logger.info("LLM call succeeded, output validated against schema")
+                return result
+            except Exception as e:
+                self.logger.error("Structured output validation failed: %s", e)
+                raise
         else:
             response = self.llm.invoke(messages)
+            self.logger.info("LLM call succeeded (raw text output)")
             return response.content.strip()
+
 
     def run(self, state: dict) -> dict:
         """
         Executes this agent as a LangGraph node.
         Returns a partial state update: {output_key: result}.
-        Pydantic model outputs are converted to plain dicts for state storage.
         """
+        self.logger.info("Running agent, writing to state key '%s'", self.output_key)
+
         messages = [
             SystemMessage(content=self.system_prompt),
             *self.build_messages(state),
@@ -76,4 +88,5 @@ class BaseAgent(ABC):
         if self.output_schema is not None:
             result = result.model_dump()
 
+        self.logger.info("Agent finished successfully")
         return {self.output_key: result}

@@ -40,5 +40,11 @@ skills, tools, or experience."""
     def run(self, state: dict) -> dict:
         """Overrides base run() to also increment retry_count."""
         base_result = super().run(state)
-        base_result["retry_count"] = state.get("retry_count", 0) + 1
+        new_retry_count = state.get("retry_count", 0) + 1
+        base_result["retry_count"] = new_retry_count
+
+        verdict = base_result["critique"]["verdict"]
+        self.logger.info(
+            "Critic verdict: '%s' (retry_count now %d)", verdict, new_retry_count
+        )
         return base_result

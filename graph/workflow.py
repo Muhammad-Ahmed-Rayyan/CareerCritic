@@ -6,6 +6,10 @@ from agents.jobfit_agent import JobFitAgent
 from agents.critic_agent import CriticAgent
 from agents.writer_agent import WriterAgent
 
+from utils.logger import get_logger
+
+logger = get_logger("workflow")
+
 from config import MAX_RETRIES
 
 
@@ -15,7 +19,10 @@ def route_after_critic(state: CareerCriticState) -> str:
     retry_count = state.get("retry_count", 0)
 
     if critique["verdict"] == "revise" and retry_count < MAX_RETRIES:
+        logger.info("Routing decision: jobfit (revise, retry %d/%d)", retry_count, MAX_RETRIES)
         return "jobfit"
+
+    logger.info("Routing decision: writer (verdict=%s, retry %d/%d)", critique["verdict"], retry_count, MAX_RETRIES)
     return "writer"
 
 
