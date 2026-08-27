@@ -39,18 +39,42 @@ if submitted:
             if not resume_text:
                 st.error("Could not extract any text from the uploaded file.")
             else:
-                with st.spinner("Running multi-agent analysis (Parser → JobFit → Critic → Writer)..."):
-                    initial_state = {
-                        "resume_text": resume_text,
-                        "job_description": job_description,
-                        "parsed_resume": None,
-                        "fit_analysis": None,
-                        "critique": None,
-                        "final_report": None,
-                        "retry_count": 0,
-                    }
-                    result = st.session_state.graph.invoke(initial_state)
+                initial_state = {
+                    "resume_text": resume_text,
+                    "job_description": job_description,
+                    "parsed_resume": None,
+                    "fit_analysis": None,
+                    "critique": None,
+                    "final_report": None,
+                    "retry_count": 0,
+                }
 
+                # Friendly labels for each node, shown as the graph streams progress
+                NODE_LABELS = {
+                    "parser": "📄 Parsing resume...",
+                    "jobfit": "🎯 Scoring job fit...",
+                    "critic": "🔍 Reviewing feedback quality...",
+                    "writer": "✍️ Writing final report...",
+                }
+
+                status_placeholder = st.empty()
+                result = None
+
+                for step in st.session_state.graph.stream(initial_state):
+                    # Each `step` is a dict like {"parser": {...partial state update...}}
+                    node_name = list(step.keys())[0]
+                    node_output = step[node_name]
+
+                    label = NODE_LABELS.get(node_name, f"Running {node_name}...")
+                    status_placeholder.info(label)
+
+                    # Keep the latest full state so we can use it once streaming finishes
+                    if result is None:
+                        result = {**initial_state, **node_output}
+                    else:
+                        result.update(node_output)
+
+                status_placeholder.empty()
                 st.success("Analysis complete.")
 
                 # Quick metrics row
